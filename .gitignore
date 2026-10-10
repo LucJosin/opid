@@ -1,25 +1,17 @@
-# Godot 4.2+ specific ignores
-~*.dll
-
-# Godot 4+ specific ignores
-.godot/
-.nomedia
-
-# Godot-specific ignores
-.import/
-export.cfg
-export_credentials.cfg
-*.tmp
-
-# Imported translations (automatically generated from CSV files)
-*.translation
-
-# Mono-specific ignores
-.mono/
-data_*/
-mono_crash.*.json
-
-# Export outputs
+# Go build outputs
+/bin/
 *.exe
-# Uncomment if your project does not version PCK files as runtime dependencies.
-# *.pck
+*.dll
+*.so
+*.dylib
+
+# Go test outputs
+*.test
+*.test.exe
+
+# Coverage outputs
+/coverage.out
+/coverage.html
+
+# Local planning files
+/tmp/
