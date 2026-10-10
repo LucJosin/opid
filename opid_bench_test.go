@@ -24,7 +24,8 @@ func benchmarkCodec(b *testing.B, prefix string) (*Codec, uuid.UUID, ID) {
 }
 
 func BenchmarkEncode(b *testing.B) {
-	for _, prefix := range []string{"usr", strings.Repeat("a", MaxPrefixLength)} {
+	prefixes := []string{"usr", strings.Repeat("a", MaxPrefixLength)}
+	for _, prefix := range prefixes {
 		b.Run(prefix, func(b *testing.B) {
 			c, id, _ := benchmarkCodec(b, prefix)
 			b.ReportAllocs()
@@ -36,7 +37,8 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func BenchmarkDecode(b *testing.B) {
-	for _, prefix := range []string{"usr", strings.Repeat("a", MaxPrefixLength)} {
+	prefixes := []string{"usr", strings.Repeat("a", MaxPrefixLength)}
+	for _, prefix := range prefixes {
 		b.Run(prefix, func(b *testing.B) {
 			c, _, s := benchmarkCodec(b, prefix)
 			b.ReportAllocs()
@@ -70,15 +72,29 @@ func BenchmarkDecodeParallel(b *testing.B) {
 }
 
 func BenchmarkDecodeInvalid(b *testing.B) {
-	c := testCodec(b)
-	for _, v := range []struct {
+	c := newTestCodec(b)
+
+	tests := []struct {
 		name, s string
 		want    error
 	}{
-		{"format", "bad", ErrInvalidFormat},
-		{"checksum", "usr_31GQdK9BRjzTx1t1gYPlQ_!!!", ErrInvalidChecksum},
-		{"overflow", signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"), ErrInvalidBase62},
-	} {
+		{
+			name: "format",
+			s:    "bad",
+			want: ErrInvalidFormat,
+		},
+		{
+			name: "checksum",
+			s:    "usr_31GQdK9BRjzTx1t1gYPlQ_!!!",
+			want: ErrInvalidChecksum,
+		},
+		{
+			name: "overflow",
+			s:    signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"),
+			want: ErrInvalidBase62,
+		},
+	}
+	for _, v := range tests {
 		b.Run(v.name, func(b *testing.B) {
 			if _, err := c.Decode(ID(v.s)); err != v.want {
 				b.Fatalf("fixture: %v", err)

@@ -10,14 +10,24 @@ import (
 )
 
 func TestBase62(t *testing.T) {
-	for _, v := range []struct {
+	tests := []struct {
 		id      uuid.UUID
 		payload string
 	}{
-		{uuid.Nil(), "0"},
-		{uuid.UUID{15: 1}, "1"},
-		{uuid.Max(), "7n42DGM5Tflk9n8mt7Fhc7"},
-	} {
+		{
+			id:      uuid.Nil(),
+			payload: "0",
+		},
+		{
+			id:      uuid.UUID{15: 1},
+			payload: "1",
+		},
+		{
+			id:      uuid.Max(),
+			payload: "7n42DGM5Tflk9n8mt7Fhc7",
+		},
+	}
+	for _, v := range tests {
 		if got := encodeBase62(v.id); got != v.payload {
 			t.Fatalf("encode = %q", got)
 		}
@@ -26,7 +36,16 @@ func TestBase62(t *testing.T) {
 			t.Fatalf("decode = %v, %v", got, err)
 		}
 	}
-	for _, s := range []string{"", "01", strings.Repeat("0", payloadWidth+1), strings.Repeat("z", payloadWidth), "7n42DGM5Tflk9n8mt7Fhc8", strings.Repeat("!", payloadWidth)} {
+
+	invalidPayloads := []string{
+		"",
+		"01",
+		strings.Repeat("0", payloadWidth+1),
+		strings.Repeat("z", payloadWidth),
+		"7n42DGM5Tflk9n8mt7Fhc8",
+		strings.Repeat("!", payloadWidth),
+	}
+	for _, s := range invalidPayloads {
 		if _, err := decodeBase62(s); err != ErrInvalidBase62 {
 			t.Fatalf("decode(%q): %v", s, err)
 		}
@@ -57,7 +76,8 @@ func TestBase62WordBoundaries(t *testing.T) {
 	limit := new(big.Int).Lsh(big.NewInt(1), 128)
 	for bit := 0; bit <= 128; bit++ {
 		power := new(big.Int).Lsh(big.NewInt(1), uint(bit))
-		for _, delta := range []int64{-1, 0, 1} {
+		deltas := []int64{-1, 0, 1}
+		for _, delta := range deltas {
 			n := new(big.Int).Add(power, big.NewInt(delta))
 			payload := referenceBase62(n)
 			id, err := decodeBase62(payload)
@@ -95,15 +115,35 @@ func referenceBase62(value *big.Int) string {
 }
 
 func TestChecksum(t *testing.T) {
-	// Independently calculated with Python's zlib.crc32.
-	for _, v := range []struct{ input, want string }{
-		{"", "000"},
-		{"123456789", "RME"},
-		{"usr_31GQdK9BRjzTx1t1gYPlQ", "ccn"},
-		{"usr_2dwHTRTFRxWLTM", "bav"},
-		{"usr_7n42DGM5QePXFZlRJ5QKHn", "NMr"},
-		{"usr_0", "b0r"},
-	} {
+	tests := []struct {
+		input, want string
+	}{
+		{
+			input: "",
+			want:  "000",
+		},
+		{
+			input: "123456789",
+			want:  "RME",
+		},
+		{
+			input: "usr_31GQdK9BRjzTx1t1gYPlQ",
+			want:  "ccn",
+		},
+		{
+			input: "usr_2dwHTRTFRxWLTM",
+			want:  "bav",
+		},
+		{
+			input: "usr_7n42DGM5QePXFZlRJ5QKHn",
+			want:  "NMr",
+		},
+		{
+			input: "usr_0",
+			want:  "b0r",
+		},
+	}
+	for _, v := range tests {
 		if got := checksum(v.input); got != v.want {
 			t.Fatalf("checksum(%q) = %q; want %q", v.input, got, v.want)
 		}
@@ -135,7 +175,7 @@ func referenceChecksum(body []byte) string {
 
 const sampleUUID = "0199c4e2-7a3b-7c12-8e42-9f1234567890"
 
-func testCodec(t testing.TB) *Codec {
+func newTestCodec(t testing.TB) *Codec {
 	t.Helper()
 	c, err := New("usr")
 	if err != nil {

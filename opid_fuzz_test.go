@@ -42,15 +42,21 @@ func FuzzDecode(f *testing.F) {
 	f.Add("usr_31GQdK9BRjzTx1t1gYPlQ_ccn")
 	f.Add("")
 	f.Add("usr_zzzzzzzzzzzzzzzzzzzzzz_000")
-	c := testCodec(f)
+	c := newTestCodec(f)
 	f.Fuzz(func(t *testing.T, s string) { checkDecode(t, c, s) })
 }
 
 func FuzzPayload(f *testing.F) {
-	for _, payload := range []string{"0", "31GQdK9BRjzTx1t1gYPlQ", "7n42DGM5Tflk9n8mt7Fhc8", "zzzzzzzzzzzzzzzzzzzzzz"} {
+	payloads := []string{
+		"0",
+		"31GQdK9BRjzTx1t1gYPlQ",
+		"7n42DGM5Tflk9n8mt7Fhc8",
+		"zzzzzzzzzzzzzzzzzzzzzz",
+	}
+	for _, payload := range payloads {
 		f.Add(payload)
 	}
-	c := testCodec(f)
+	c := newTestCodec(f)
 	f.Fuzz(func(t *testing.T, payload string) {
 		if len(payload) > payloadWidth {
 			return
@@ -75,13 +81,14 @@ func checkDecode(t *testing.T, c *Codec, s string) {
 }
 
 func FuzzBase62(f *testing.F) {
-	for _, seed := range []uuid.UUID{
+	seeds := []uuid.UUID{
 		uuid.Nil(),
 		uuid.Max(),
 		{7: 0xff, 8: 0xff},
 		{8: 1},
 		uuid.MustParse(sampleUUID),
-	} {
+	}
+	for _, seed := range seeds {
 		f.Add(seed[:])
 	}
 

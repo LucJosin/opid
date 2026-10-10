@@ -16,23 +16,96 @@ const (
 )
 
 func TestEndpoints(t *testing.T) {
-	handler := testHandler(t)
-	for _, tt := range []struct {
+	handler := newTestHandler(t)
+
+	tests := []struct {
 		name, method, path string
 		status             int
 		id, rawUUID        string
 	}{
-		{"encode", "GET", "/usr/encode/" + sampleUUID, http.StatusOK, sampleID, ""},
-		{"decode", "GET", "/usr/decode/" + sampleID, http.StatusOK, "", sampleUUID},
-		{"wrong prefix", "GET", "/usr/decode/ws_31GQdK9BRjzTx1t1gYPlQ_ccn", http.StatusBadRequest, "", ""},
-		{"unsupported resource", "GET", "/ws/generate", http.StatusNotFound, "", ""},
-		{"invalid UUID", "GET", "/usr/encode/bad", http.StatusBadRequest, "", ""},
-		{"UUIDv4", "GET", "/usr/encode/0199c4e2-7a3b-4c12-8e42-9f1234567890", http.StatusBadRequest, "", ""},
-		{"bad checksum", "GET", "/usr/decode/usr_31GQdK9BRjzTx1t1gYPlQ_!!!", http.StatusBadRequest, "", ""},
-		{"missing UUID", "GET", "/usr/encode/", http.StatusNotFound, "", ""},
-		{"missing ID", "GET", "/usr/decode/", http.StatusNotFound, "", ""},
-		{"method", "POST", "/usr/generate", http.StatusMethodNotAllowed, "", ""},
-	} {
+		{
+			name:    "encode",
+			method:  "GET",
+			path:    "/usr/encode/" + sampleUUID,
+			status:  http.StatusOK,
+			id:      sampleID,
+			rawUUID: "",
+		},
+		{
+			name:    "decode",
+			method:  "GET",
+			path:    "/usr/decode/" + sampleID,
+			status:  http.StatusOK,
+			id:      "",
+			rawUUID: sampleUUID,
+		},
+		{
+			name:    "wrong prefix",
+			method:  "GET",
+			path:    "/usr/decode/ws_31GQdK9BRjzTx1t1gYPlQ_ccn",
+			status:  http.StatusBadRequest,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "unsupported resource",
+			method:  "GET",
+			path:    "/ws/generate",
+			status:  http.StatusNotFound,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "invalid UUID",
+			method:  "GET",
+			path:    "/usr/encode/bad",
+			status:  http.StatusBadRequest,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "UUIDv4",
+			method:  "GET",
+			path:    "/usr/encode/0199c4e2-7a3b-4c12-8e42-9f1234567890",
+			status:  http.StatusBadRequest,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "bad checksum",
+			method:  "GET",
+			path:    "/usr/decode/usr_31GQdK9BRjzTx1t1gYPlQ_!!!",
+			status:  http.StatusBadRequest,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "missing UUID",
+			method:  "GET",
+			path:    "/usr/encode/",
+			status:  http.StatusNotFound,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "missing ID",
+			method:  "GET",
+			path:    "/usr/decode/",
+			status:  http.StatusNotFound,
+			id:      "",
+			rawUUID: "",
+		},
+		{
+			name:    "method",
+			method:  "POST",
+			path:    "/usr/generate",
+			status:  http.StatusMethodNotAllowed,
+			id:      "",
+			rawUUID: "",
+		},
+	}
+
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.path, nil)
 			recorder := httptest.NewRecorder()
@@ -61,7 +134,7 @@ func TestEndpoints(t *testing.T) {
 }
 
 func TestGenerate(t *testing.T) {
-	handler := testHandler(t)
+	handler := newTestHandler(t)
 	codec, err := opid.New("usr")
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +169,7 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
-func testHandler(t *testing.T) http.Handler {
+func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
 	codec, err := opid.New(resourcePrefix)
 	if err != nil {

@@ -10,6 +10,10 @@ import (
 )
 
 func TestID(t *testing.T) {
+	type idRecord struct {
+		ID opid.ID `json:"id"`
+	}
+
 	var empty opid.ID
 	if !empty.IsZero() || empty.String() != "" {
 		t.Fatal("unexpected zero ID")
@@ -26,18 +30,14 @@ func TestID(t *testing.T) {
 	if id.IsZero() || id.String() != "usr_31GQdK9BRjzTx1t1gYPlQ_ccn" {
 		t.Fatal("unexpected ID")
 	}
-	data, err := json.Marshal(struct {
-		ID opid.ID `json:"id"`
-	}{id})
+	data, err := json.Marshal(idRecord{ID: id})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(data) != `{"id":"usr_31GQdK9BRjzTx1t1gYPlQ_ccn"}` {
 		t.Fatalf("JSON = %s", data)
 	}
-	var record struct {
-		ID opid.ID `json:"id"`
-	}
+	var record idRecord
 	if err := json.Unmarshal(data, &record); err != nil {
 		t.Fatal(err)
 	}

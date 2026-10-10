@@ -20,7 +20,7 @@ const (
 	testSeparatorCount = 2
 )
 
-func testCodec(t testing.TB) *opid.Codec {
+func newCodec(t testing.TB) *opid.Codec {
 	t.Helper()
 	codec, err := opid.New("usr")
 	if err != nil {
@@ -60,12 +60,28 @@ func fixtureBase62(value *big.Int) string {
 }
 
 func TestVectors(t *testing.T) {
-	c := testCodec(t)
-	for _, v := range []struct{ raw, payload, sum string }{
-		{sampleUUID, "31GQdK9BRjzTx1t1gYPlQ", "ccn"},
-		{"00000000-0000-7000-8000-000000000000", "2dwHTRTFRxWLTM", "bav"},
-		{"ffffffff-ffff-7fff-bfff-ffffffffffff", "7n42DGM5QePXFZlRJ5QKHn", "NMr"},
-	} {
+	c := newCodec(t)
+
+	tests := []struct {
+		raw, payload, sum string
+	}{
+		{
+			raw:     sampleUUID,
+			payload: "31GQdK9BRjzTx1t1gYPlQ",
+			sum:     "ccn",
+		},
+		{
+			raw:     "00000000-0000-7000-8000-000000000000",
+			payload: "2dwHTRTFRxWLTM",
+			sum:     "bav",
+		},
+		{
+			raw:     "ffffffff-ffff-7fff-bfff-ffffffffffff",
+			payload: "7n42DGM5QePXFZlRJ5QKHn",
+			sum:     "NMr",
+		},
+	}
+	for _, v := range tests {
 		t.Run(v.raw, func(t *testing.T) {
 			id := uuid.MustParse(v.raw)
 			want := "usr_" + v.payload + "_" + v.sum
@@ -82,7 +98,15 @@ func TestVectors(t *testing.T) {
 }
 
 func TestPrefix(t *testing.T) {
-	for _, prefix := range []string{"a", "usr", "ws", "dom", "a1", strings.Repeat("a", opid.MaxPrefixLength)} {
+	validPrefixes := []string{
+		"a",
+		"usr",
+		"ws",
+		"dom",
+		"a1",
+		strings.Repeat("a", opid.MaxPrefixLength),
+	}
+	for _, prefix := range validPrefixes {
 		t.Run(prefix, func(t *testing.T) {
 			c, err := opid.New(prefix)
 			if err != nil {
@@ -102,12 +126,24 @@ func TestPrefix(t *testing.T) {
 			}
 		})
 	}
-	for _, prefix := range []string{"", "1usr", "Usr", "us_r", "us-r", "é", "u\xff", strings.Repeat("a", opid.MaxPrefixLength+1)} {
+
+	invalidPrefixes := []string{
+		"",
+		"1usr",
+		"Usr",
+		"us_r",
+		"us-r",
+		"é",
+		"u\xff",
+		strings.Repeat("a", opid.MaxPrefixLength+1),
+	}
+	for _, prefix := range invalidPrefixes {
 		if _, err := opid.New(prefix); !errors.Is(err, opid.ErrInvalidPrefix) {
 			t.Fatalf("opid.New(%q): %v", prefix, err)
 		}
 	}
-	c := testCodec(t)
+
+	c := newCodec(t)
 	id, err := c.Encode(uuid.MustParse(sampleUUID))
 	if err != nil {
 		t.Fatal(err)
@@ -116,13 +152,14 @@ func TestPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := other.Decode(opid.ID("dom" + strings.TrimPrefix(id.String(), "usr"))); !errors.Is(err, opid.ErrInvalidChecksum) {
+	relabeledID := opid.ID("dom" + strings.TrimPrefix(id.String(), "usr"))
+	if _, err := other.Decode(relabeledID); !errors.Is(err, opid.ErrInvalidChecksum) {
 		t.Fatalf("relabel: %v", err)
 	}
 }
 
 func TestDecodeErrors(t *testing.T) {
-	c := testCodec(t)
+	c := newCodec(t)
 	good, err := c.Encode(uuid.MustParse(sampleUUID))
 	if err != nil {
 		t.Fatal(err)
@@ -133,38 +170,149 @@ func TestDecodeErrors(t *testing.T) {
 	if sum[0] == '0' {
 		alteredSum = "1" + sum[1:]
 	}
-	for _, tt := range []struct {
+
+	tests := []struct {
 		name, input string
 		want        error
 	}{
-		{"empty", "", opid.ErrInvalidFormat},
-		{"missing checksum", "usr_" + payload, opid.ErrInvalidFormat},
-		{"separator", strings.ReplaceAll(good.String(), "_", "-"), opid.ErrInvalidFormat},
-		{"empty prefix", "_" + payload + "_" + sum, opid.ErrInvalidFormat},
-		{"empty payload", "usr__" + sum, opid.ErrInvalidFormat},
-		{"empty checksum", "usr_" + payload + "_", opid.ErrInvalidFormat},
-		{"extra component", good.String() + "_x", opid.ErrInvalidFormat},
-		{"prefix", "dom_" + payload + "_" + sum, opid.ErrInvalidPrefix},
-		{"uppercase prefix", "Usr_" + payload + "_" + sum, opid.ErrInvalidPrefix},
-		{"bad checksum", "usr_" + payload + "_" + alteredSum, opid.ErrInvalidChecksum},
-		{"checksum length", good.String() + "0", opid.ErrInvalidChecksum},
-		{"checksum syntax", "usr_" + payload + "_" + strings.Repeat("!", testChecksumSize), opid.ErrInvalidChecksum},
-		{"payload mutation", "usr_" + "1" + payload[1:] + "_" + sum, opid.ErrInvalidChecksum},
-		{"payload truncated", "usr_" + payload[1:] + "_" + sum, opid.ErrInvalidChecksum},
-		{"payload case", "usr_" + strings.ToLower(payload) + "_" + sum, opid.ErrInvalidChecksum},
-		{"payload padded", signedPayload("usr", "0"+payload), opid.ErrInvalidBase62},
-		{"payload too long", signedPayload("usr", strings.Repeat("1", testPayloadWidth+1)), opid.ErrInvalidFormat},
-		{"bad alphabet", signedPayload("usr", "!"+payload[1:]), opid.ErrInvalidBase62},
-		{"overflow", signedPayload("usr", strings.Repeat("z", testPayloadWidth)), opid.ErrInvalidBase62},
-		{"overflow boundary", signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"), opid.ErrInvalidBase62},
-		{"zero", signedPayload("usr", "0"), opid.ErrInvalidUUID},
-		{"max", signedPayload("usr", fixtureUUIDPayload(uuid.Max())), opid.ErrInvalidUUID},
-		{"too long", strings.Repeat("x", opid.MaxPrefixLength+testSeparatorCount+testPayloadWidth+testChecksumSize+1), opid.ErrInvalidFormat},
-		{"whitespace", " " + good.String(), opid.ErrInvalidPrefix},
-		{"prefix before checksum", "dom_" + payload + "_!!", opid.ErrInvalidPrefix},
-		{"alphabet before checksum", "usr_!" + payload[1:] + "_!!", opid.ErrInvalidBase62},
-		{"checksum before overflow", "usr_" + strings.Repeat("z", testPayloadWidth) + "_!!", opid.ErrInvalidChecksum},
-	} {
+		{
+			name:  "empty",
+			input: "",
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "missing checksum",
+			input: "usr_" + payload,
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "separator",
+			input: strings.ReplaceAll(good.String(), "_", "-"),
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "empty prefix",
+			input: "_" + payload + "_" + sum,
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "empty payload",
+			input: "usr__" + sum,
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "empty checksum",
+			input: "usr_" + payload + "_",
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "extra component",
+			input: good.String() + "_x",
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "prefix",
+			input: "dom_" + payload + "_" + sum,
+			want:  opid.ErrInvalidPrefix,
+		},
+		{
+			name:  "uppercase prefix",
+			input: "Usr_" + payload + "_" + sum,
+			want:  opid.ErrInvalidPrefix,
+		},
+		{
+			name:  "bad checksum",
+			input: "usr_" + payload + "_" + alteredSum,
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "checksum length",
+			input: good.String() + "0",
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "checksum syntax",
+			input: "usr_" + payload + "_" + strings.Repeat("!", testChecksumSize),
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "payload mutation",
+			input: "usr_" + "1" + payload[1:] + "_" + sum,
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "payload truncated",
+			input: "usr_" + payload[1:] + "_" + sum,
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "payload case",
+			input: "usr_" + strings.ToLower(payload) + "_" + sum,
+			want:  opid.ErrInvalidChecksum,
+		},
+		{
+			name:  "payload padded",
+			input: signedPayload("usr", "0"+payload),
+			want:  opid.ErrInvalidBase62,
+		},
+		{
+			name:  "payload too long",
+			input: signedPayload("usr", strings.Repeat("1", testPayloadWidth+1)),
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "bad alphabet",
+			input: signedPayload("usr", "!"+payload[1:]),
+			want:  opid.ErrInvalidBase62,
+		},
+		{
+			name:  "overflow",
+			input: signedPayload("usr", strings.Repeat("z", testPayloadWidth)),
+			want:  opid.ErrInvalidBase62,
+		},
+		{
+			name:  "overflow boundary",
+			input: signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"),
+			want:  opid.ErrInvalidBase62,
+		},
+		{
+			name:  "zero",
+			input: signedPayload("usr", "0"),
+			want:  opid.ErrInvalidUUID,
+		},
+		{
+			name:  "max",
+			input: signedPayload("usr", fixtureUUIDPayload(uuid.Max())),
+			want:  opid.ErrInvalidUUID,
+		},
+		{
+			name:  "too long",
+			input: strings.Repeat("x", opid.MaxPrefixLength+testSeparatorCount+testPayloadWidth+testChecksumSize+1),
+			want:  opid.ErrInvalidFormat,
+		},
+		{
+			name:  "whitespace",
+			input: " " + good.String(),
+			want:  opid.ErrInvalidPrefix,
+		},
+		{
+			name:  "prefix before checksum",
+			input: "dom_" + payload + "_!!",
+			want:  opid.ErrInvalidPrefix,
+		},
+		{
+			name:  "alphabet before checksum",
+			input: "usr_!" + payload[1:] + "_!!",
+			want:  opid.ErrInvalidBase62,
+		},
+		{
+			name:  "checksum before overflow",
+			input: "usr_" + strings.Repeat("z", testPayloadWidth) + "_!!",
+			want:  opid.ErrInvalidChecksum,
+		},
+	}
+
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id, err := c.Decode(opid.ID(tt.input))
 			if !errors.Is(err, tt.want) || id != (uuid.UUID{}) {
@@ -175,7 +323,7 @@ func TestDecodeErrors(t *testing.T) {
 }
 
 func TestUUIDBits(t *testing.T) {
-	c := testCodec(t)
+	c := newCodec(t)
 	for version := range 16 {
 		for variant := range 4 {
 			id := uuid.MustParse(sampleUUID)
@@ -201,7 +349,8 @@ func TestUUIDBits(t *testing.T) {
 }
 
 func TestInvalidCodec(t *testing.T) {
-	for _, c := range []*opid.Codec{nil, {}} {
+	invalidCodecs := []*opid.Codec{nil, {}}
+	for _, c := range invalidCodecs {
 		if _, err := c.Encode(uuid.MustParse(sampleUUID)); !errors.Is(err, opid.ErrInvalidPrefix) {
 			t.Fatal(err)
 		}
@@ -212,7 +361,7 @@ func TestInvalidCodec(t *testing.T) {
 }
 
 func TestDistinctUUIDs(t *testing.T) {
-	c := testCodec(t)
+	c := newCodec(t)
 	seen := make(map[opid.ID]bool)
 	for i := range 1000 {
 		id := uuid.MustParse(sampleUUID)
@@ -229,7 +378,7 @@ func TestDistinctUUIDs(t *testing.T) {
 }
 
 func TestConcurrentRoundTrip(t *testing.T) {
-	c := testCodec(t)
+	c := newCodec(t)
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
@@ -256,15 +405,19 @@ func TestConcurrentRoundTrip(t *testing.T) {
 }
 
 func TestDecodeString(t *testing.T) {
-	for _, codec := range []*opid.Codec{testCodec(t), nil, {}} {
-		for _, input := range []string{
+	codecs := []*opid.Codec{newCodec(t), nil, {}}
+
+	for _, codec := range codecs {
+		inputs := []string{
 			"usr_31GQdK9BRjzTx1t1gYPlQ_ccn",
 			"",
 			"ws_31GQdK9BRjzTx1t1gYPlQ_ccn",
 			"usr_31GQdK9BRjzTx1t1gYPlQ_!!!",
 			signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"),
 			signedPayload("usr", "0"),
-		} {
+		}
+
+		for _, input := range inputs {
 			want, wantErr := codec.Decode(opid.ID(input))
 			got, err := codec.DecodeString(input)
 			if got != want || err != wantErr {
@@ -275,14 +428,16 @@ func TestDecodeString(t *testing.T) {
 }
 
 func TestEncodeString(t *testing.T) {
-	codec := testCodec(t)
-	for _, input := range []string{
+	codec := newCodec(t)
+
+	validInputs := []string{
 		sampleUUID,
 		strings.ToUpper(sampleUUID),
 		strings.ReplaceAll(sampleUUID, "-", ""),
 		"{" + sampleUUID + "}",
 		"urn:uuid:" + sampleUUID,
-	} {
+	}
+	for _, input := range validInputs {
 		want, err := codec.Encode(uuid.MustParse(sampleUUID))
 		if err != nil {
 			t.Fatal(err)
@@ -294,7 +449,7 @@ func TestEncodeString(t *testing.T) {
 		}
 	}
 
-	for _, input := range []string{
+	invalidInputs := []string{
 		"",
 		"bad",
 		" " + sampleUUID,
@@ -302,15 +457,19 @@ func TestEncodeString(t *testing.T) {
 		"0199c4e2-7a3b-7c12-ce42-9f1234567890",
 		uuid.Nil().String(),
 		uuid.Max().String(),
-	} {
+	}
+	for _, input := range invalidInputs {
 		got, err := codec.EncodeString(input)
 		if !got.IsZero() || !errors.Is(err, opid.ErrInvalidUUID) {
 			t.Fatalf("EncodeString(%q) = %q, %v", input, got, err)
 		}
 	}
 
-	for _, codec := range []*opid.Codec{nil, {}} {
-		for _, input := range []string{sampleUUID, "bad"} {
+	invalidCodecs := []*opid.Codec{nil, {}}
+	for _, codec := range invalidCodecs {
+		inputs := []string{sampleUUID, "bad"}
+
+		for _, input := range inputs {
 			got, err := codec.EncodeString(input)
 			if !got.IsZero() || !errors.Is(err, opid.ErrInvalidPrefix) {
 				t.Fatalf("invalid codec: %q, %v", got, err)
@@ -320,7 +479,8 @@ func TestEncodeString(t *testing.T) {
 }
 
 func TestNewID(t *testing.T) {
-	for _, prefix := range []string{"usr", "ws", strings.Repeat("a", opid.MaxPrefixLength)} {
+	prefixes := []string{"usr", "ws", strings.Repeat("a", opid.MaxPrefixLength)}
+	for _, prefix := range prefixes {
 		t.Run(prefix, func(t *testing.T) {
 			codec, err := opid.New(prefix)
 			if err != nil {
@@ -354,7 +514,9 @@ func TestNewID(t *testing.T) {
 		})
 	}
 
-	for _, codec := range []*opid.Codec{nil, {}} {
+	invalidCodecs := []*opid.Codec{nil, {}}
+
+	for _, codec := range invalidCodecs {
 		id, err := codec.NewID()
 		if !id.IsZero() || !errors.Is(err, opid.ErrInvalidPrefix) {
 			t.Fatalf("invalid codec: %q, %v", id, err)
@@ -363,18 +525,19 @@ func TestNewID(t *testing.T) {
 }
 
 func TestCodecPrefix(t *testing.T) {
-	for _, prefix := range []string{"usr", "ws", strings.Repeat("a", opid.MaxPrefixLength)} {
+	prefixes := []string{"usr", "ws", strings.Repeat("a", opid.MaxPrefixLength)}
+	for _, prefix := range prefixes {
 		codec, err := opid.New(prefix)
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		if got := codec.Prefix(); got != prefix {
 			t.Fatalf("Prefix = %q; want %q", got, prefix)
 		}
 	}
 
-	for _, codec := range []*opid.Codec{nil, {}} {
+	invalidCodecs := []*opid.Codec{nil, {}}
+	for _, codec := range invalidCodecs {
 		if got := codec.Prefix(); got != "" {
 			t.Fatalf("invalid codec prefix = %q", got)
 		}
@@ -387,7 +550,7 @@ func TestNewIDConcurrent(t *testing.T) {
 		idsPerWorker = 100
 	)
 
-	codec := testCodec(t)
+	codec := newCodec(t)
 	ids := make(chan opid.ID, workers*idsPerWorker)
 	var group sync.WaitGroup
 	for range workers {
