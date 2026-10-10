@@ -73,6 +73,8 @@ The [basic example](examples/basic/main.go) shows encoding and decoding. The [HT
 ```sh
 make help
 make fmt
+make fmt-check
+make lint
 make vet
 make test
 make race
@@ -81,4 +83,4 @@ make bench
 make cover
 ```
 
-Use `make help` for command descriptions and fuzz options. Licensed under Apache 2.0. See [LICENSE](LICENSE).
+`make lint` runs the version pinned in `.golangci-lint-version` and downloads the tool when needed. Use `make help` for command descriptions and fuzz options. Licensed under Apache 2.0. See [LICENSE](LICENSE).

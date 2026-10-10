@@ -20,11 +20,11 @@ const (
 	testSeparatorCount = 2
 )
 
-func newCodec(t testing.TB) *opid.Codec {
-	t.Helper()
+func newCodec(tb testing.TB) *opid.Codec {
+	tb.Helper()
 	codec, err := opid.New("usr")
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return codec
 }

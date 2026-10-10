@@ -175,11 +175,11 @@ func referenceChecksum(body []byte) string {
 
 const sampleUUID = "0199c4e2-7a3b-7c12-8e42-9f1234567890"
 
-func newTestCodec(t testing.TB) *Codec {
-	t.Helper()
+func newTestCodec(tb testing.TB) *Codec {
+	tb.Helper()
 	c, err := New("usr")
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return c
 }

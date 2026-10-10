@@ -58,7 +58,7 @@ func newHandler(codec *opid.Codec) http.Handler {
 	return mux
 }
 
-func (app *api) generate(w http.ResponseWriter, r *http.Request) {
+func (app *api) generate(w http.ResponseWriter, _ *http.Request) {
 	id := uuid.NewV7()
 	publicID, err := app.codec.Encode(id)
 	if err != nil {

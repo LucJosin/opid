@@ -1,15 +1,20 @@
-.DEFAULT_GOAL := test
+.DEFAULT_GOAL := help
 
-export GOPROXY := off
-export GOSUMDB := off
-export GOTOOLCHAIN := local
-
+GOLANGCI_LINT_VERSION := $(shell cat .golangci-lint-version)
 FUZZ_TIME ?= 5s
 FUZZ_WORKERS ?= 2
 
 .PHONY: fmt
 fmt: ## Format Go files
 	gofmt -w .
+
+.PHONY: fmt-check
+fmt-check: ## Check Go formatting
+	@test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+.PHONY: lint
+lint: fmt-check ## Check formatting and run linters
+	@go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
 .PHONY: vet
 vet: ## Run static checks
@@ -42,5 +47,5 @@ cover: ## Run race tests and show coverage
 
 .PHONY: help
 help: ## Show commands and fuzz options
-	@awk 'BEGIN { FS = ":.*## "; print "Usage: make <command>\n" } /^[a-zA-Z_]+:.*## / { printf "  %-8s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## "; print "Usage: make <command>\n" } /^[a-zA-Z_-]+:.*## / { printf "  %-10s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@printf '\nFuzz options:\n  FUZZ_TIME     Duration per target (default: %s)\n  FUZZ_WORKERS  Workers per target (default: %s)\n\nExample: make fuzz FUZZ_TIME=5m\n' '$(FUZZ_TIME)' '$(FUZZ_WORKERS)'
