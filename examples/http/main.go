@@ -1,3 +1,4 @@
+// Command http serves local endpoints to generate, encode, and decode OPIDs.
 package main
 
 import (

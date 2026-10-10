@@ -1,3 +1,4 @@
+// Command basic demonstrates UUIDv7 encoding and decoding with opid.
 package main
 
 import (

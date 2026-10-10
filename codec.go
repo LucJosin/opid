@@ -13,14 +13,13 @@ var (
 	ErrInvalidPrefix = errors.New("opid: invalid prefix")
 	// ErrInvalidChecksum indicates a malformed or mismatched checksum.
 	ErrInvalidChecksum = errors.New("opid: invalid checksum")
-	// ErrInvalidBase62 indicates invalid payload characters or overflow.
+	// ErrInvalidBase62 indicates invalid payload characters, padding, or overflow.
 	ErrInvalidBase62 = errors.New("opid: invalid base62")
-	// ErrInvalidUUID indicates a UUID outside the supported UUIDv7 domain.
+	// ErrInvalidUUID indicates malformed UUID text or an unsupported UUID value.
 	ErrInvalidUUID = errors.New("opid: invalid UUIDv7")
 )
 
 // Codec encodes and decodes IDs for one prefix. It is safe for concurrent use.
-// The zero value is invalid; use New to construct a Codec.
 type Codec struct {
 	prefix string
 }
@@ -82,7 +81,8 @@ func (c *Codec) Prefix() string {
 	return c.prefix
 }
 
-// NewID creates a UUIDv7 and returns its public ID.
+// NewID creates a UUIDv7 and returns its public ID using the codec's prefix.
+// It returns an empty ID and [ErrInvalidPrefix] for a nil or zero value codec.
 func (c *Codec) NewID() (ID, error) {
 	if c == nil || c.prefix == "" {
 		return "", ErrInvalidPrefix
@@ -91,7 +91,7 @@ func (c *Codec) NewID() (ID, error) {
 	return c.Encode(uuid.NewV7())
 }
 
-// EncodeString parses a UUIDv7 string and returns its public ID.
+// EncodeString parses s as UUIDv7 and returns its canonical public ID.
 func (c *Codec) EncodeString(s string) (ID, error) {
 	if c == nil || c.prefix == "" {
 		return "", ErrInvalidPrefix
@@ -105,7 +105,7 @@ func (c *Codec) EncodeString(s string) (ID, error) {
 	return c.Encode(id)
 }
 
-// Encode returns the canonical public ID for id, which must be UUIDv7.
+// Encode returns the canonical public ID for id using the codec's prefix.
 func (c *Codec) Encode(id uuid.UUID) (ID, error) {
 	if c == nil || c.prefix == "" {
 		return "", ErrInvalidPrefix
@@ -134,12 +134,12 @@ func (c *Codec) Encode(id uuid.UUID) (ID, error) {
 }
 
 // DecodeString validates s and returns its UUIDv7.
+// It applies [Codec.Decode] with the same errors and validation rules.
 func (c *Codec) DecodeString(s string) (uuid.UUID, error) {
 	return c.Decode(ID(s))
 }
 
-// Decode validates publicID and returns its UUIDv7.
-// It checks structure, prefix, payload syntax, checksum, overflow, then UUID bits.
+// Decode validates publicID and returns its original UUIDv7.
 func (c *Codec) Decode(publicID ID) (uuid.UUID, error) {
 	if c == nil || c.prefix == "" {
 		return uuid.UUID{}, ErrInvalidPrefix
