@@ -1,8 +1,8 @@
 # OpID
 
-OpID is a Go package for public identifiers based on UUIDv7. It turns a UUID into a shorter string with a resource prefix and a checksum, and can recover the exact original UUID.
+OpID stands for opaque ID. It is a Go package for public identifiers based on UUIDv7. It turns a UUID into a shorter string with a resource prefix and a checksum, and can recover the exact original UUID.
 
-Use UUIDs inside your application and OpIDs in public URLs, responses, and messages. Requires Go 1.27 and uses only the standard library.
+Clients should treat an OpID as a complete string and pass it back without reading its parts. Use UUIDs inside your application and OpIDs in public URLs, responses, and messages. Requires Go 1.27. OpID extends [shortuuid](https://github.com/lithammer/shortuuid) encoding with resource prefixes, a checksum, and strict UUIDv7 validation.
 
 > [!WARNING]
 > OpID is reversible, so it does not hide the UUID or its UUIDv7 time information. The checksum does not provide authentication or access control. Only UUID version 7 is supported.
@@ -13,8 +13,8 @@ A user already has a UUIDv7. Your application can expose it with a name that tel
 
 ```text
 UUID:   0199c4e2-7a3b-7c12-8e42-9f1234567890
-OpID:   usr_31GQdK9BRjzTx1t1gYPlQ_ccn
-Format: <prefix>_<base62>_<checksum>
+OpID:   usr_2JFJNM9BCXm7nJtPJdJuB5_lZw
+Format: <prefix>_<base57>_<checksum>
 ```
 
 Create a codec for the resource, encode its UUID for public use, and decode incoming IDs with the same codec. Decoding checks the prefix, checksum, and UUID before returning the original value. The package needs no database or separate public UUID.
@@ -23,18 +23,18 @@ Create a codec for the resource, encode its UUID for public use, and decode inco
 
 - Exact UUIDv7 round trips with no lost bits.
 - Custom resource prefixes such as `usr`, `ws`, and `dom`.
-- Short Base62 payloads with no leading padding.
+- Fixed 22 character Base57 payloads that avoid similar looking characters.
 - A three character checksum to catch accidental mistakes.
-- Safe concurrent use with no external dependencies.
+- Safe concurrent use with one small dependency.
 
-With a three letter prefix, an ID has at most 30 characters. Prefixes use lowercase letters and digits, start with a letter, and have at most 32 characters. Base62 is case sensitive.
+With a three letter prefix, an ID has exactly 30 characters. Prefixes use lowercase letters and digits, start with a letter, and have at most 32 characters. The full length is the prefix length plus 27 characters. Both payload and checksum are case sensitive.
 
 ## Example
 
 Import `github.com/LucJosin/opid`:
 
 ```go
-codec, err := opid.New("usr")
+codec, err := opid.NewCodec("usr")
 if err != nil {
     return err
 }
@@ -50,7 +50,9 @@ if err != nil {
 }
 ```
 
-`NewID` creates a fresh UUIDv7 and returns its public ID. Use `Encode` when you already have a UUID. Both return `opid.ID`, a named string type. `codec.Prefix()` returns its resource name. Use `String()` when a plain string is needed and `IsZero()` to check for an empty ID. For incoming strings, call `codec.DecodeString(value)`. Converting a string to `ID` does not validate it; the codec still checks the resource and format.
+`New(prefix)` creates a fresh UUIDv7 and returns its public ID without keeping a codec. `NewCodec(prefix)` creates a reusable codec. Its `NewID` method creates a fresh UUIDv7 and returns its public ID.
+
+Use `Encode` when you already have a UUID. Encoding and ID generation return `opid.ID`, a named string type. `codec.Prefix()` returns its resource name. `id.Prefix()` extracts a valid prefix from an ID without validating its payload or checksum. Use `String()` when a plain string is needed and `IsZero()` to check for an empty ID. For incoming strings, call `codec.DecodeString(value)`. Converting a string to `ID` does not validate it; the codec still checks the resource and format.
 
 For a UUID received as text, use `codec.EncodeString(value)`. It parses the UUID and checks that it is version 7 before encoding.
 
@@ -62,7 +64,7 @@ go run ./examples/basic
 
 ## Error handling
 
-Use `errors.Is` with `ErrInvalidFormat`, `ErrInvalidPrefix`, `ErrInvalidBase62`, `ErrInvalidChecksum`, or `ErrInvalidUUID`. Choose how to present these errors in your application. Failed decoding returns a zero UUID.
+Use `errors.Is` with `ErrInvalidFormat`, `ErrInvalidPrefix`, `ErrInvalidPayload`, `ErrInvalidChecksum`, or `ErrInvalidUUID`. Choose how to present these errors in your application. Failed decoding returns a zero UUID.
 
 Read the [project guide](docs/README.md) for the ideas, objectives, non goals, and implementation details.
 
