@@ -1,6 +1,6 @@
-// Package opid provides opaque IDs as short, reversible public UUIDv7 strings.
-// It extends [shortuuid] encoding
-// with resource prefixes, a checksum, and UUIDv7 checks.
+// Package opid provides short, reversible public IDs for UUIDv7.
+// It extends [shortuuid] encoding with resource prefixes, a checksum,
+// and UUIDv7 checks.
 // Clients should store and pass back the complete ID without reading its parts.
 //
 // IDs use the format prefix_payload_checksum. The payload has 22 Base57 characters,

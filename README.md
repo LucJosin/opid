@@ -1,8 +1,8 @@
 # OpID
 
-OpID stands for opaque ID. It is a Go package for public identifiers based on UUIDv7. It turns a UUID into a shorter string with a resource prefix and a checksum, and can recover the exact original UUID.
+OpID is a Go package for public IDs based on UUIDv7. It turns a UUID into a shorter string with a resource prefix and a checksum, and can recover the exact original UUID.
 
-Clients should treat an OpID as a complete string and pass it back without reading its parts. Use UUIDs inside your application and OpIDs in public URLs, responses, and messages. Requires Go 1.27. OpID extends [shortuuid](https://github.com/lithammer/shortuuid) encoding with resource prefixes, a checksum, and strict UUIDv7 validation.
+The name comes from opaque ID: clients treat an OpID as a complete string and pass it back without depending on its internal format. Use UUIDs inside your application and OpIDs in public URLs, responses, and messages. Requires Go 1.27. OpID extends [shortuuid](https://github.com/lithammer/shortuuid) encoding with resource prefixes, a checksum, and strict UUIDv7 validation.
 
 > [!WARNING]
 > OpID is reversible, so it does not hide the UUID or its UUIDv7 time information. The checksum does not provide authentication or access control. Only UUID version 7 is supported.

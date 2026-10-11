@@ -1,6 +1,6 @@
 # HTTP example
 
-This example runs a small JSON server using Go's net/http package. It shows how an application can generate a UUIDv7 and expose it as an OpID, or convert between an existing UUIDv7 and its public ID. Clients treat the returned opaque ID as a complete string. It uses GET endpoints with path parameters and needs no database or request body.
+This example runs a small JSON server using Go's net/http package. It shows how an application can generate a UUIDv7 and expose it as an OpID, or convert between an existing UUIDv7 and its public ID. Clients treat the returned public ID as a complete string. It uses GET endpoints with path parameters and needs no database or request body.
 
 ## Run
 

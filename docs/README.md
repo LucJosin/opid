@@ -1,12 +1,12 @@
 # Project guide
 
-OpID stands for opaque ID and gives UUIDv7 values a compact public form that includes a resource name and a checksum. This guide explains why the package exists, what it aims to provide, and how its format works. For a runnable introduction, see the [basic example](../examples/basic/main.go). The [project README](../README.md) shows the public API and local development commands.
+OpID provides public IDs for UUIDv7 values in a compact form that includes a resource name and a checksum. This guide explains why the package exists, what it aims to provide, and how its format works. For a runnable introduction, see the [basic example](../examples/basic/main.go). The [project README](../README.md) shows the public API and local development commands.
 
 ## Project idea
 
 OpID extends [shortuuid](https://github.com/lithammer/shortuuid) by adding a public ID format around its Base57 encoding. [Shortuuid](https://github.com/lithammer/shortuuid) handles the UUID payload. OpID adds the resource prefix and checksum, requires a fixed 22 character payload, and accepts only UUIDv7 with the RFC variant. It uses [shortuuid](https://github.com/lithammer/shortuuid) as a dependency without changing that library.
 
-An opaque ID is a value that clients store and pass back as a complete string. Clients should not read its parts to decide how the application works. The application uses a codec to validate the string and recover the UUID. This keeps the public reference separate from the way the application handles its resources.
+The name OpID comes from opaque ID. This describes how clients use the value: they store and pass back the complete string without depending on its internal format. The application uses a codec to validate the string and recover the UUID. This keeps the public reference separate from the way the application handles its resources.
 
 A UUID identifies a resource, but its usual string form does not tell a reader what kind of resource it belongs to. OpID adds that context with a prefix such as `usr` for a user, `ws` for a workspace, or `dom` for a domain. The rest of the ID contains a Base57 representation of the UUID and a small checksum. Together, these parts give applications a consistent form for public URLs, responses, messages, and logs. Each project chooses its own prefixes without changing the encoding rules.
 
