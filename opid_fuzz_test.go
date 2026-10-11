@@ -15,7 +15,7 @@ func FuzzRoundTrip(f *testing.F) {
 		if len(raw) != 16 {
 			return
 		}
-		c, err := New(prefix)
+		c, err := NewCodec(prefix)
 		if err != nil {
 			return
 		}
@@ -39,7 +39,7 @@ func FuzzRoundTrip(f *testing.F) {
 }
 
 func FuzzDecode(f *testing.F) {
-	f.Add("usr_31GQdK9BRjzTx1t1gYPlQ_ccn")
+	f.Add("usr_2JFJNM9BCXm7nJtPJdJuB5_lZw")
 	f.Add("")
 	f.Add("usr_zzzzzzzzzzzzzzzzzzzzzz_000")
 	c := newTestCodec(f)
@@ -49,8 +49,8 @@ func FuzzDecode(f *testing.F) {
 func FuzzPayload(f *testing.F) {
 	payloads := []string{
 		"0",
-		"31GQdK9BRjzTx1t1gYPlQ",
-		"7n42DGM5Tflk9n8mt7Fhc8",
+		"2JFJNM9BCXm7nJtPJdJuB5",
+		"oZEq7ovRbLq6UnGMPwc8B6",
 		"zzzzzzzzzzzzzzzzzzzzzz",
 	}
 	for _, payload := range payloads {
@@ -80,7 +80,7 @@ func checkDecode(t *testing.T, c *Codec, s string) {
 	}
 }
 
-func FuzzBase62(f *testing.F) {
+func FuzzBase57(f *testing.F) {
 	seeds := []uuid.UUID{
 		uuid.Nil(),
 		uuid.Max(),
@@ -99,15 +99,15 @@ func FuzzBase62(f *testing.F) {
 		}
 		copy(id[:], raw)
 
-		payload := encodeBase62(id)
-		expected := referenceBase62(new(big.Int).SetBytes(raw))
+		payload := encodePayload(id)
+		expected := referencePayload(new(big.Int).SetBytes(raw))
 		if payload != expected {
 			t.Fatalf("payload = %q; want %q", payload, expected)
 		}
 
-		decoded, err := decodeBase62(payload)
+		decoded, err := decodePayload(payload)
 		if err != nil || decoded != id {
-			t.Fatalf("Base62 round trip: %v", err)
+			t.Fatalf("Base57 round trip: %v", err)
 		}
 	})
 }
@@ -115,7 +115,7 @@ func FuzzBase62(f *testing.F) {
 func FuzzChecksum(f *testing.F) {
 	f.Add([]byte{})
 	f.Add([]byte("123456789"))
-	f.Add([]byte("usr_31GQdK9BRjzTx1t1gYPlQ"))
+	f.Add([]byte("usr_2JFJNM9BCXm7nJtPJdJuB5"))
 	f.Add([]byte{0, 0xff, 0x80})
 	f.Fuzz(func(t *testing.T, body []byte) {
 		const maxInputBytes = 4096

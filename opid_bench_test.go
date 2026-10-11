@@ -8,7 +8,7 @@ import (
 
 func benchmarkCodec(b *testing.B, prefix string) (*Codec, uuid.UUID, ID) {
 	b.Helper()
-	c, err := New(prefix)
+	c, err := NewCodec(prefix)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -85,13 +85,13 @@ func BenchmarkDecodeInvalid(b *testing.B) {
 		},
 		{
 			name: "checksum",
-			s:    "usr_31GQdK9BRjzTx1t1gYPlQ_!!!",
+			s:    "usr_2JFJNM9BCXm7nJtPJdJuB5_!!!",
 			want: ErrInvalidChecksum,
 		},
 		{
 			name: "overflow",
-			s:    signedPayload("usr", "7n42DGM5Tflk9n8mt7Fhc8"),
-			want: ErrInvalidBase62,
+			s:    signedPayload("usr", "oZEq7ovRbLq6UnGMPwc8B6"),
+			want: ErrInvalidPayload,
 		},
 	}
 	for _, v := range tests {
@@ -107,25 +107,25 @@ func BenchmarkDecodeInvalid(b *testing.B) {
 	}
 }
 
-func BenchmarkBase62Encode(b *testing.B) {
+func BenchmarkBase57Encode(b *testing.B) {
 	id := uuid.MustParse(sampleUUID)
 	b.ReportAllocs()
 	for b.Loop() {
-		_ = encodeBase62(id)
+		_ = encodePayload(id)
 	}
 }
 
-func BenchmarkBase62Decode(b *testing.B) {
+func BenchmarkBase57Decode(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _ = decodeBase62("31GQdK9BRjzTx1t1gYPlQ")
+		_, _ = decodePayload("2JFJNM9BCXm7nJtPJdJuB5")
 	}
 }
 
 func BenchmarkChecksum(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		_ = checksumBytes([]byte("usr_31GQdK9BRjzTx1t1gYPlQ"))
+		_ = checksumBytes([]byte("usr_2JFJNM9BCXm7nJtPJdJuB5"))
 	}
 }
 

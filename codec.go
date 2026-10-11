@@ -13,8 +13,8 @@ var (
 	ErrInvalidPrefix = errors.New("opid: invalid prefix")
 	// ErrInvalidChecksum indicates a malformed or mismatched checksum.
 	ErrInvalidChecksum = errors.New("opid: invalid checksum")
-	// ErrInvalidBase62 indicates invalid payload characters, padding, or overflow.
-	ErrInvalidBase62 = errors.New("opid: invalid base62")
+	// ErrInvalidPayload indicates invalid Base57 characters or numeric overflow.
+	ErrInvalidPayload = errors.New("opid: invalid payload")
 	// ErrInvalidUUID indicates malformed UUID text or an unsupported UUID value.
 	ErrInvalidUUID = errors.New("opid: invalid UUIDv7")
 )
@@ -28,12 +28,11 @@ type Codec struct {
 const MaxPrefixLength = 32
 
 const (
-	minPrefixLength  = 1
-	minPayloadLength = 1
-	separatorCount   = 2
-	idSeparator      = "_"
+	minPrefixLength = 1
+	separatorCount  = 2
+	idSeparator     = "_"
 
-	minIDLength = minPrefixLength + separatorCount + minPayloadLength + checksumSize
+	minIDLength = minPrefixLength + separatorCount + payloadWidth + checksumSize
 	maxIDLength = MaxPrefixLength + separatorCount + payloadWidth + checksumSize
 
 	// UUID version and variant fields defined by RFC 9562.
@@ -45,26 +44,26 @@ const (
 	uuidRFCVariantBits = 0x80
 )
 
-// New returns a codec bound to prefix.
+// NewCodec returns a codec bound to prefix.
 //
 // The prefix must contain 1 to [MaxPrefixLength] ASCII bytes, start with a
 // lowercase letter, and contain only lowercase letters and digits. Prefixes
 // such as "usr", "ws", and "dom" are valid. Underscores, uppercase letters,
-// spaces, and empty prefixes are rejected with [ErrInvalidPrefix]. New does
+// spaces, and empty prefixes are rejected with [ErrInvalidPrefix]. NewCodec does
 // not trim or change the prefix.
 //
 // The codec uses this prefix when encoding and requires it when decoding.
 // It is safe for concurrent use. Create a separate codec for each resource
-// kind; no prefix registry is needed.
+// kind, no prefix registry is needed.
 //
 // For example:
 //
-//	codec, err := opid.New("usr")
+//	codec, err := opid.NewCodec("usr")
 //	if err != nil {
 //	    return err
 //	}
 //	publicID, err := codec.EncodeString("0199c4e2-7a3b-7c12-8e42-9f1234567890")
-func New(prefix string) (*Codec, error) {
+func NewCodec(prefix string) (*Codec, error) {
 	if !validPrefix(prefix) {
 		return nil, ErrInvalidPrefix
 	}
@@ -115,8 +114,7 @@ func (c *Codec) Encode(id uuid.UUID) (ID, error) {
 		return "", ErrInvalidUUID
 	}
 
-	var payload [payloadWidth]byte
-	encoded := encodePayload(&payload, id)
+	encoded := encodePayload(id)
 
 	var out [maxIDLength]byte
 	n := copy(out[:], c.prefix)
@@ -167,13 +165,13 @@ func (c *Codec) Decode(publicID ID) (uuid.UUID, error) {
 		return uuid.UUID{}, ErrInvalidPrefix
 	}
 
-	if len(payload) > payloadWidth {
+	if len(payload) != payloadWidth {
 		return uuid.UUID{}, ErrInvalidFormat
 	}
 
 	for i := range payload {
-		if digit62(payload[i]) < 0 {
-			return uuid.UUID{}, ErrInvalidBase62
+		if !strings.ContainsRune(payloadAlphabet, rune(payload[i])) {
+			return uuid.UUID{}, ErrInvalidPayload
 		}
 	}
 
@@ -184,7 +182,7 @@ func (c *Codec) Decode(publicID ID) (uuid.UUID, error) {
 		return uuid.UUID{}, ErrInvalidChecksum
 	}
 
-	id, err := decodeBase62(payload)
+	id, err := decodePayload(payload)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

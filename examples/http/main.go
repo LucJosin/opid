@@ -30,7 +30,7 @@ type api struct {
 }
 
 func main() {
-	codec, err := opid.New(resourcePrefix)
+	codec, err := opid.NewCodec(resourcePrefix)
 	if err != nil {
 		log.Fatal(err)
 	}
