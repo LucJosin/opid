@@ -33,7 +33,7 @@ fuzz: ## Run all fuzz targets
 	go test -run '^$$' -fuzz '^FuzzRoundTrip$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
 	go test -run '^$$' -fuzz '^FuzzDecode$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
 	go test -run '^$$' -fuzz '^FuzzPayload$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
-	go test -run '^$$' -fuzz '^FuzzBase62$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
+	go test -run '^$$' -fuzz '^FuzzBase57$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
 	go test -run '^$$' -fuzz '^FuzzChecksum$$' -fuzztime $(FUZZ_TIME) -parallel $(FUZZ_WORKERS)
 
 .PHONY: bench

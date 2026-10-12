@@ -1,6 +1,6 @@
 # HTTP example
 
-This example runs a small JSON server using Go's net/http package. It shows how an application can generate a UUIDv7 and expose it as an OPID, or convert between an existing UUIDv7 and its public ID. It uses GET endpoints with path parameters and needs no database or request body.
+This example runs a small JSON server using Go's net/http package. It shows how an application can generate a UUIDv7 and expose it as an OpID, or convert between an existing UUIDv7 and its public ID. Clients treat the returned public ID as a complete string. It uses GET endpoints with path parameters and needs no database or request body.
 
 ## Run
 
@@ -23,7 +23,7 @@ curl http://127.0.0.1:8080/usr/generate
 The response has status 200 with `uuid` and `id` fields. Their values change on each request; this is one possible response:
 
 ```json
-{"id":"usr_31GQdK9BRjzTx1t1gYPlQ_ccn","uuid":"0199c4e2-7a3b-7c12-8e42-9f1234567890"}
+{"id":"usr_2JFJNM9BCXm7nJtPJdJuB5_lZw","uuid":"0199c4e2-7a3b-7c12-8e42-9f1234567890"}
 ```
 
 The handler creates a UUIDv7 with `uuid.NewV7` and encodes it with the shared codec, keeping both values available. Use `codec.NewID()` when only the public ID is needed. Responses use Cache Control with no store, and no resource is saved.
@@ -39,7 +39,7 @@ curl http://127.0.0.1:8080/usr/encode/0199c4e2-7a3b-7c12-8e42-9f1234567890
 The response has status 200:
 
 ```json
-{"id":"usr_31GQdK9BRjzTx1t1gYPlQ_ccn"}
+{"id":"usr_2JFJNM9BCXm7nJtPJdJuB5_lZw"}
 ```
 
 ## Decode
@@ -47,7 +47,7 @@ The response has status 200:
 Pass a public ID in the path to recover its UUIDv7:
 
 ```sh
-curl http://127.0.0.1:8080/usr/decode/usr_31GQdK9BRjzTx1t1gYPlQ_ccn
+curl http://127.0.0.1:8080/usr/decode/usr_2JFJNM9BCXm7nJtPJdJuB5_lZw
 ```
 
 The response has status 200:

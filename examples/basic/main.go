@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	codec, err := opid.New("usr")
+	codec, err := opid.NewCodec("usr")
 	if err != nil {
 		log.Fatal(err)
 	}

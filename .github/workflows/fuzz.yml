@@ -19,7 +19,7 @@ jobs:
           - FuzzRoundTrip
           - FuzzDecode
           - FuzzPayload
-          - FuzzBase62
+          - FuzzBase57
           - FuzzChecksum
 
     steps:

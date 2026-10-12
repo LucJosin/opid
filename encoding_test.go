@@ -9,29 +9,29 @@ import (
 	"uuid"
 )
 
-func TestBase62(t *testing.T) {
+func TestBase57(t *testing.T) {
 	tests := []struct {
 		id      uuid.UUID
 		payload string
 	}{
 		{
 			id:      uuid.Nil(),
-			payload: "0",
+			payload: strings.Repeat("2", payloadWidth),
 		},
 		{
 			id:      uuid.UUID{15: 1},
-			payload: "1",
+			payload: strings.Repeat("2", payloadWidth-1) + "3",
 		},
 		{
 			id:      uuid.Max(),
-			payload: "7n42DGM5Tflk9n8mt7Fhc7",
+			payload: "oZEq7ovRbLq6UnGMPwc8B5",
 		},
 	}
 	for _, v := range tests {
-		if got := encodeBase62(v.id); got != v.payload {
+		if got := encodePayload(v.id); got != v.payload {
 			t.Fatalf("encode = %q", got)
 		}
-		got, err := decodeBase62(v.payload)
+		got, err := decodePayload(v.payload)
 		if err != nil || got != v.id {
 			t.Fatalf("decode = %v, %v", got, err)
 		}
@@ -42,36 +42,36 @@ func TestBase62(t *testing.T) {
 		"01",
 		strings.Repeat("0", payloadWidth+1),
 		strings.Repeat("z", payloadWidth),
-		"7n42DGM5Tflk9n8mt7Fhc8",
+		"oZEq7ovRbLq6UnGMPwc8B6",
 		strings.Repeat("!", payloadWidth),
 	}
 	for _, s := range invalidPayloads {
-		if _, err := decodeBase62(s); err != ErrInvalidBase62 {
+		if _, err := decodePayload(s); err != ErrInvalidPayload {
 			t.Fatalf("decode(%q): %v", s, err)
 		}
 	}
 }
 
-func TestBase62Reference(t *testing.T) {
+func TestBase57Reference(t *testing.T) {
 	rng := rand.New(rand.NewPCG(1, 2))
 	for range 1000 {
 		var id uuid.UUID
 		for i := range id {
 			id[i] = byte(rng.Uint32())
 		}
-		expected := referenceBase62(new(big.Int).SetBytes(id[:]))
-		got := encodeBase62(id)
+		expected := referencePayload(new(big.Int).SetBytes(id[:]))
+		got := encodePayload(id)
 		if got != expected {
 			t.Fatal("reference mismatch")
 		}
-		decoded, err := decodeBase62(got)
+		decoded, err := decodePayload(got)
 		if err != nil || decoded != id {
 			t.Fatal("round trip mismatch")
 		}
 	}
 }
 
-func TestBase62WordBoundaries(t *testing.T) {
+func TestBase57WordBoundaries(t *testing.T) {
 	// Exercise carries at every bit, including the boundary between words.
 	limit := new(big.Int).Lsh(big.NewInt(1), 128)
 	for bit := 0; bit <= 128; bit++ {
@@ -79,10 +79,10 @@ func TestBase62WordBoundaries(t *testing.T) {
 		deltas := []int64{-1, 0, 1}
 		for _, delta := range deltas {
 			n := new(big.Int).Add(power, big.NewInt(delta))
-			payload := referenceBase62(n)
-			id, err := decodeBase62(payload)
+			payload := referencePayload(n)
+			id, err := decodePayload(payload)
 			if n.Cmp(limit) >= 0 {
-				if err != ErrInvalidBase62 || id != (uuid.UUID{}) {
+				if err != ErrInvalidPayload || id != (uuid.UUID{}) {
 					t.Fatalf("overflow at bit %d delta %d: %v", bit, delta, err)
 				}
 				continue
@@ -90,22 +90,34 @@ func TestBase62WordBoundaries(t *testing.T) {
 			if err != nil || new(big.Int).SetBytes(id[:]).Cmp(n) != 0 {
 				t.Fatalf("decode at bit %d delta %d: %v", bit, delta, err)
 			}
-			if got := encodeBase62(id); got != payload {
+			if got := encodePayload(id); got != payload {
 				t.Fatalf("encode at bit %d delta %d: %q; want %q", bit, delta, got, payload)
 			}
 		}
 	}
 }
 
+func referencePayload(value *big.Int) string {
+	encoded := referenceBase(value, "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+	if len(encoded) < payloadWidth {
+		encoded = strings.Repeat("2", payloadWidth-len(encoded)) + encoded
+	}
+	return encoded
+}
+
 func referenceBase62(value *big.Int) string {
+	return referenceBase(value, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+}
+
+func referenceBase(value *big.Int, alphabet string) string {
 	n := new(big.Int).Set(value)
 	if n.Sign() == 0 {
-		return "0"
+		return alphabet[:1]
 	}
 	var reversed []byte
 	for n.Sign() > 0 {
 		remainder := new(big.Int)
-		n.QuoRem(n, big.NewInt(62), remainder)
+		n.QuoRem(n, big.NewInt(int64(len(alphabet))), remainder)
 		reversed = append(reversed, alphabet[remainder.Int64()])
 	}
 	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
@@ -127,16 +139,16 @@ func TestChecksum(t *testing.T) {
 			want:  "RME",
 		},
 		{
-			input: "usr_31GQdK9BRjzTx1t1gYPlQ",
-			want:  "ccn",
+			input: "usr_2JFJNM9BCXm7nJtPJdJuB5",
+			want:  "lZw",
 		},
 		{
-			input: "usr_2dwHTRTFRxWLTM",
-			want:  "bav",
+			input: "usr_222222229tfndYm3pWg8fx",
+			want:  "2Iy",
 		},
 		{
-			input: "usr_7n42DGM5QePXFZlRJ5QKHn",
-			want:  "NMr",
+			input: "usr_oZEq7ovRSKw4RyseQUhKGL",
+			want:  "uvg",
 		},
 		{
 			input: "usr_0",
@@ -177,7 +189,7 @@ const sampleUUID = "0199c4e2-7a3b-7c12-8e42-9f1234567890"
 
 func newTestCodec(tb testing.TB) *Codec {
 	tb.Helper()
-	c, err := New("usr")
+	c, err := NewCodec("usr")
 	if err != nil {
 		tb.Fatal(err)
 	}

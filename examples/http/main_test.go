@@ -12,7 +12,7 @@ import (
 
 const (
 	sampleUUID = "0199c4e2-7a3b-7c12-8e42-9f1234567890"
-	sampleID   = "usr_31GQdK9BRjzTx1t1gYPlQ_ccn"
+	sampleID   = "usr_2JFJNM9BCXm7nJtPJdJuB5_lZw"
 )
 
 func TestEndpoints(t *testing.T) {
@@ -42,7 +42,7 @@ func TestEndpoints(t *testing.T) {
 		{
 			name:    "wrong prefix",
 			method:  "GET",
-			path:    "/usr/decode/ws_31GQdK9BRjzTx1t1gYPlQ_ccn",
+			path:    "/usr/decode/ws_2JFJNM9BCXm7nJtPJdJuB5_lZw",
 			status:  http.StatusBadRequest,
 			id:      "",
 			rawUUID: "",
@@ -74,7 +74,7 @@ func TestEndpoints(t *testing.T) {
 		{
 			name:    "bad checksum",
 			method:  "GET",
-			path:    "/usr/decode/usr_31GQdK9BRjzTx1t1gYPlQ_!!!",
+			path:    "/usr/decode/usr_2JFJNM9BCXm7nJtPJdJuB5_!!!",
 			status:  http.StatusBadRequest,
 			id:      "",
 			rawUUID: "",
@@ -135,7 +135,7 @@ func TestEndpoints(t *testing.T) {
 
 func TestGenerate(t *testing.T) {
 	handler := newTestHandler(t)
-	codec, err := opid.New("usr")
+	codec, err := opid.NewCodec("usr")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestGenerate(t *testing.T) {
 
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	codec, err := opid.New(resourcePrefix)
+	codec, err := opid.NewCodec(resourcePrefix)
 	if err != nil {
 		t.Fatal(err)
 	}
